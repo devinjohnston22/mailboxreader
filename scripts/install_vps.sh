@@ -49,6 +49,26 @@ with os.fdopen(fd,'w') as out:
 PY
 fi
 python3 scripts/website_config.py .env.website
+if [ ! -f .local/metabase-admin.json ] && [ ! -f .local/requested-owner.json ]; then
+  python3 - <<'PY'
+import getpass,json,os
+from pathlib import Path
+from scripts.website_config import read_settings
+email=read_settings('.env.website')['ACME_EMAIL']
+print('Your dashboard login email will be:',email)
+while True:
+ password=getpass.getpass('Choose your dashboard password (14+ characters, uppercase, lowercase and a number): ')
+ if len(password)<14 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not any(c.isdigit() for c in password):
+  print('Please choose a stronger password.');continue
+ if password!=getpass.getpass('Confirm dashboard password: '):
+  print('Passwords did not match.');continue
+ break
+Path('.local').mkdir(mode=0o700,exist_ok=True)
+fd=os.open('.local/requested-owner.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+with os.fdopen(fd,'w') as f: json.dump({'email':email,'password':password},f)
+print('Dashboard login saved privately; your password is not printed.')
+PY
+fi
 if ! command -v docker >/dev/null; then
   # Use Ubuntu's signed package repository. Do not remove/replace another engine.
   for package in docker-ce docker-ce-cli containerd.io podman-docker; do

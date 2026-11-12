@@ -18,7 +18,9 @@ IP using DNS A records, and AAAA only when IPv6 is correctly routed. Ports 80 an
 ## Deployment
 
 For a fresh Ubuntu VPS, use `bash scripts/install_vps.sh` from the checkout in
-the VPS console as root. It asks for a certificate-contact email, defaults to
+the VPS console as root. It asks for a certificate-contact/login email and lets
+you choose a dashboard password privately in the terminal. Password input is not
+echoed or printed. It defaults to
 `finance.stockpkg.click`, checks memory/disk and web-port conflicts, installs the
 Ubuntu-signed Docker packages only when no engine exists, and runs all Python
 setup tools in the project's pinned container. It requires no SSH connection

@@ -5,7 +5,28 @@ from pathlib import Path
 import secrets
 import time
 import httpx
-from provision_metabase import provision
+if __package__:
+    from .provision_metabase import provision
+else:
+    from provision_metabase import provision
+
+
+def initial_credentials(access,requested):
+    desired=json.loads(requested.read_text()) if requested.exists() else None
+    if desired is not None:
+        if (set(desired)!={'email','password'} or not isinstance(desired['email'],str)
+                or '@' not in desired['email'] or not isinstance(desired['password'],str)
+                or len(desired['password'])<14):
+            raise ValueError('Invalid private initial-owner settings')
+    if access.exists():
+        existing=json.loads(access.read_text())
+        if desired is not None and existing==desired:
+            return existing  # Retry the same initial setup without replacing any login.
+        raise RuntimeError('Metabase is fresh but saved admin credentials exist; preserve/review that file before a fresh setup')
+    credentials=desired or {'email':'owner@localhost.invalid','password':secrets.token_urlsafe(40)}
+    fd=os.open(access,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'w') as f: json.dump(credentials,f)
+    return credentials
 
 
 def bootstrap():
@@ -28,12 +49,8 @@ def bootstrap():
         response=client.get('/api/session/properties');response.raise_for_status()
         setup=response.json().get('setup-token')
         if setup:
-            if access.exists():
-                raise RuntimeError('Metabase is fresh but saved admin credentials exist; preserve/review that file before a fresh setup')
-            credentials={'email':'owner@localhost.invalid','password':secrets.token_urlsafe(40)}
-            # Save before the request so a dropped response never loses the generated login.
-            fd=os.open(access,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-            with os.fdopen(fd,'w') as f: json.dump(credentials,f)
+            requested=root/'.local/requested-owner.json'
+            credentials=initial_credentials(access,requested)
             response=client.post('/api/setup',json={'token':setup,
                 'user':dict(credentials,first_name='Mailbox',last_name='Owner'),
                 'prefs':{'site_name':'Mailbox Reader','allow_tracking':False},
@@ -41,6 +58,7 @@ def bootstrap():
                     'host':'postgres','port':5432,'dbname':'mailbox','user':'mailbox_analytics',
                     'password':values['ANALYTICS_PASSWORD'],'ssl':False}}})
             response.raise_for_status()
+            requested.unlink(missing_ok=True)
         elif not access.exists():
             raise RuntimeError('Metabase is already configured; use scripts/provision_metabase.py with your API key')
         credentials=json.loads(access.read_text())

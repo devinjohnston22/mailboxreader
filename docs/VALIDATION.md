@@ -69,3 +69,8 @@ The installer performs resource and port checks, preserves existing web services
 and uses Ubuntu-signed package repositories. Remote success is not claimed until
 the VPS console run and trusted public HTTPS check complete. No DNS or mailbox
 changes were made by these local tests.
+
+Three additional initial-owner tests passed for private chosen credentials,
+same-credential setup retries, rejecting invalid requested settings, and refusing
+to overwrite an existing owner login. The console installer asks for the owner
+password through the terminal without echo and does not print it.
