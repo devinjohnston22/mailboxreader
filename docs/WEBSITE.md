@@ -5,6 +5,29 @@ sign-in. Only the dashboard is exposed publicly. PostgreSQL, the mailbox API and
 n8n remain private. It runs the same eight finance reports as the local system.
 No Outlook connection is made by deploying the website.
 
+## Using a separate HTTPS port
+
+To keep a different service on port 443, explicitly run:
+
+```sh
+DASHBOARD_HTTPS_PORT=8443 bash scripts/install_vps.sh
+```
+
+The dashboard then has its own normal HTTPS listener at
+`https://finance.stockpkg.click:8443`, with its own Metabase login. The installer
+checks ports 80 and 8443 and does not stop or reconfigure the port 443 service.
+Caddy obtains certificates with HTTP-01 on port 80; TLS-ALPN challenges on port
+443 are disabled. Permit inbound TCP 80 and 8443 in the host/provider firewall.
+The selected port is persisted in `.env.website` and used by Metabase and the
+public readiness check. Port 80 must be available; if it is occupied, setup stops
+for review. No hostname changes or new DNS records are needed when the same
+dashboard hostname is used on a different port.
+
+Separate ports do not establish a security boundary against another privileged
+process on the same server. Use a unique dashboard password and treat the host's
+other software as part of the trust boundary. This setup does not configure a
+credential-interception proxy or send mailbox credentials through one.
+
 ## Hosting requirements
 
 Use a persistent Linux server with Docker Engine/Compose v2, Python 3.12+, and

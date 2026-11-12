@@ -3,7 +3,7 @@ services:
   metabase:
     environment:
       MB_SITE_NAME: Mailbox Reader
-      MB_SITE_URL: https://${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN in .env.website}
+      MB_SITE_URL: https://${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN in .env.website}:${DASHBOARD_HTTPS_PORT:-443}
       MB_ENABLE_PUBLIC_SHARING: 'false'
       MB_ENABLE_EMBEDDING: 'false'
   website:
@@ -12,11 +12,12 @@ services:
     environment:
       DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN in .env.website}
       ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env.website}
+      DASHBOARD_HTTPS_PORT: ${DASHBOARD_HTTPS_PORT:-443}
       NO_PROXY: ${NO_PROXY:-},metabase,localhost,127.0.0.1
       no_proxy: ${NO_PROXY:-},metabase,localhost,127.0.0.1
     ports:
       - 80:80
-      - 443:443
+      - ${DASHBOARD_HTTPS_PORT:-443}:${DASHBOARD_HTTPS_PORT:-443}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddydata:/data

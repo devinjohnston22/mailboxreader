@@ -2,13 +2,13 @@
 import time
 import httpx
 if __package__:
-    from .website_config import read_settings
+    from .website_config import read_settings,origin
 else:
-    from website_config import read_settings
+    from website_config import read_settings,origin
 
 
 def verify(settings,client=None):
-    url='https://'+settings['DASHBOARD_DOMAIN']
+    url=origin(settings)
     def check(c):
         response=c.get(url+'/api/health',timeout=20)
         response.raise_for_status()
@@ -35,5 +35,5 @@ if __name__=='__main__':
             break
         except (httpx.HTTPError,ValueError,RuntimeError):
             if attempt==29:
-                raise SystemExit('Website verification failed. Check DNS, ports 80/443, Caddy certificate logs and host firewall; no public website readiness is claimed.')
+                raise SystemExit('Website verification failed. Check DNS, port 80 and your selected HTTPS port, Caddy certificate logs and host firewall; no public website readiness is claimed.')
             time.sleep(2)

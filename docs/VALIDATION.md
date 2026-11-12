@@ -74,3 +74,19 @@ Three additional initial-owner tests passed for private chosen credentials,
 same-credential setup retries, rejecting invalid requested settings, and refusing
 to overwrite an existing owner login. The console installer asks for the owner
 password through the terminal without echo and does not print it.
+
+## Separate HTTPS listener
+
+All 30 application/database/website tests passed after adding explicit HTTPS
+port 8443 support. The production Caddy configuration adapted successfully with
+only `:8443` as its HTTPS listener and TLS-ALPN challenges disabled. A local
+HTTPS test, using a trusted test CA with hostname verification enabled, exercised
+health, HTML, anonymous-access denial, owner login and all eight dashboard cards.
+Its HTTP redirect correctly targeted port 8443. The public ACME challenge has
+not been exercised on the user's VPS.
+
+`scripts/smoke_installer_ports.py` tested the real installer preflight in a
+network-isolated container with simulated Ubuntu OS metadata: an existing port
+443 listener remained running while port 8443 passed; selecting the occupied
+443 or occupying 8443 caused a safe stop. No packages were installed in these
+preflight tests and no existing server process was stopped or reconfigured.

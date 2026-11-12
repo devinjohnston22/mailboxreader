@@ -3,7 +3,14 @@
 	admin localhost:2019
 }
 
-{$DASHBOARD_DOMAIN} {
+{$DASHBOARD_DOMAIN}:{$DASHBOARD_HTTPS_PORT:443} {
+	# Certificates use the standard HTTP challenge on port 80. A separate
+	# service may own port 443 when this dashboard explicitly selects 8443.
+	tls {
+		issuer acme {
+			disable_tlsalpn_challenge
+		}
+	}
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000"

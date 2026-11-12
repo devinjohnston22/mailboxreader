@@ -11,7 +11,7 @@ def read_settings(path):
         if not line or line.startswith('#'): continue
         if '=' not in line: raise ValueError('Website settings must use NAME=value')
         name,value=line.split('=',1)
-        if name not in ('DASHBOARD_DOMAIN','ACME_EMAIL'):
+        if name not in ('DASHBOARD_DOMAIN','ACME_EMAIL','DASHBOARD_HTTPS_PORT'):
             raise ValueError('Unexpected website setting: '+name)
         if name in result: raise ValueError('Duplicate website setting: '+name)
         result[name]=value.strip()
@@ -35,7 +35,33 @@ def validate(settings):
     # Compose performs $ interpolation, and Caddy substitutes settings into syntax.
     if any(char in email for char in ('$', '`', '{', '}', '#', '"', "'", '\\')):
         raise ValueError('Unsupported ACME contact email characters')
-    return dict(DASHBOARD_DOMAIN=domain,ACME_EMAIL=email)
+    return dict(DASHBOARD_DOMAIN=domain,ACME_EMAIL=email,
+                DASHBOARD_HTTPS_PORT=https_port(settings.get('DASHBOARD_HTTPS_PORT','443')))
+
+
+def https_port(value):
+    value=str(value)
+    if value not in ('443','8443'):
+        raise ValueError('DASHBOARD_HTTPS_PORT must be 443 or 8443')
+    return value
+
+
+def origin(settings):
+    port=https_port(settings.get('DASHBOARD_HTTPS_PORT','443'))
+    return 'https://'+settings['DASHBOARD_DOMAIN']+(':'+port if port!='443' else '')
+
+
+def save_settings(path,settings):
+    import os,tempfile
+    values=validate(settings)
+    path=Path(path)
+    fd,name=tempfile.mkstemp(prefix='.website-',dir=path.parent)
+    try:
+        with os.fdopen(fd,'w') as output:
+            for key,value in values.items(): output.write(key+'='+value+'\n')
+        os.replace(name,path)
+    finally:
+        if os.path.exists(name): os.unlink(name)
 
 
 if __name__=='__main__':
