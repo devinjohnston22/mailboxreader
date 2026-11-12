@@ -1,0 +1,102 @@
+# Dedicated dashboard website
+
+The website uses a domain you control, automatic HTTPS, and private Metabase
+sign-in. Only the dashboard is exposed publicly. PostgreSQL, the mailbox API and
+n8n remain private. It runs the same eight finance reports as the local system.
+No Outlook connection is made by deploying the website.
+
+## Hosting requirements
+
+Use a persistent Linux server with Docker Engine/Compose v2, Python 3.12+, and
+at least 4 GB RAM (8 GB recommended for the complete n8n/Metabase/PostgreSQL stack).
+A static-only website or ordinary PHP/shared-hosting plan cannot run this stack.
+A VPS, dedicated server, or an equivalent container service with persistent disks
+can host it. Set a subdomain such as `finance.<your-domain>` to the server's public
+IP using DNS A records, and AAAA only when IPv6 is correctly routed. Ports 80 and
+443 must reach Caddy. Keep SSH restricted to authorized administrators.
+
+## Deployment
+
+For a fresh Ubuntu VPS, use `bash scripts/install_vps.sh` from the checkout in
+the VPS console as root. It asks for a certificate-contact email, defaults to
+`finance.stockpkg.click`, checks memory/disk and web-port conflicts, installs the
+Ubuntu-signed Docker packages only when no engine exists, and runs all Python
+setup tools in the project's pinned container. It requires no SSH connection
+from the assistant, no VPN, and no host virtualenv. It does not alter DNS, stop
+existing web servers, reset a VPS, activate Outlook workflows or connect a mailbox.
+Set the `finance` A record to the actual VPS IP in your DNS provider first. If
+this hostname already has a conflicting record, review that record rather than
+deleting unrelated DNS entries. Confirm the server firewall permits HTTPS/HTTP;
+the installer does not rewrite firewall rules. Keep the credentials file private.
+
+The command is intended for fresh deployment: a repeat run with ports already
+occupied stops for review. For controlled upgrades use the deployment procedure
+below. A failed public certificate/readiness check does not claim the website is
+live. Resolve DNS/firewall errors and rerun the existing-stack startup/verification
+steps rather than replacing credentials or deleting volumes.
+
+1. Place the repository on the server. Preserve any existing private `.env`,
+   `.local` owner login, n8n encryption key, and Docker volumes when upgrading.
+2. Copy `deploy/website.env.example` to `.env.website` and set your actual hostname
+   and certificate-contact email. These are public configuration, not credentials.
+3. Run `bash scripts/deploy_website.sh`. It initializes private credentials, starts
+   the stack, creates the owner login and dashboard before opening website ports,
+   and then starts Caddy. HTTPS certificates are issued and renewed automatically.
+4. The helper prints the actual website address only after verifying trusted TLS,
+   database health, the HTML GUI response, and HTTPS security headers. Open that
+   address in your browser and sign in with the private login saved in
+   `.local/metabase-admin.json`. Change your owner password after first sign-in
+   using Metabase's account settings; see credential rotation below.
+
+You do not need to write application code. DNS/server access and Microsoft OAuth
+consent are account-owner configuration steps. Domain registration and hosting
+are not purchased by this project.
+
+The `website` Compose profile is deliberate: simply loading the configuration
+does not expose the setup wizard. The deployment script first completes private
+owner setup. Keep the `caddydata` volume; it holds private certificate keys and
+renewal state. Include it in encrypted, access-controlled backups alongside the
+database/n8n/Metabase volumes. No credentials or database contents belong in Git.
+
+Controlled deployment refreshes stop this project's proxy during initialization,
+so a brief maintenance window is expected. If initialization fails, it stays
+offline until corrected rather than exposing a setup screen.
+
+## Private administration and mailbox connection
+
+n8n is not an internet-facing administration console. Use an SSH tunnel from your
+computer to your server, forwarding local port 5678 to its loopback port 5678.
+Then open n8n in that local browser and complete its owner and read-only OAuth
+setup from SETUP.md. Register the exact local callback displayed by n8n; Microsoft
+permits HTTP loopback redirects for development. Keep the SSH session alive while
+completing OAuth. Tenant restrictions may require an approved HTTPS callback; in
+that case configure a separate protected administration hostname before consent,
+instead of exposing an unclaimed n8n instance. The public dashboard hostname alone
+never grants access to your mailbox or authorizes an AI provider.
+
+Public sharing and embedding are disabled in the website configuration. Finance
+reports require Metabase authentication and collection permissions. Only grant
+additional reviewers the specific collection/database permissions they need.
+Use MFA/SSO where your Metabase edition or hosting identity gateway supports it.
+
+## Operations
+
+- HTTPS verification failures are deployment failures, not success. Inspect DNS,
+  port reachability and `docker compose ... logs website`; never disable certificate
+  verification to work around them. Caddy requires certificate-authority network
+  access and working public DNS; the development sandbox is not a substitute for
+  your hosting provider.
+- Once the owner password is changed, the generated password file is stale. Use
+  `scripts/provision_metabase.py` with a securely supplied administrator API key
+  for future dashboard updates, rather than resetting or overwriting the owner.
+  For normal restarts run Compose with `.env`, `.env.website`, `compose.yaml`,
+  `compose.website.yaml`, and the `website` profile; the bootstrap script is for
+  initialization and controlled refreshes, not every routine restart.
+- Existing data is not automatically copied from a development machine to a new
+  host. For a fresh deployment it starts empty. If a migration is requested, use
+  encrypted PostgreSQL backups plus n8n/Metabase state and the encryption key;
+  validate restoration before changing DNS. The current project contains no real
+  mailbox data to migrate.
+- Monitor disk capacity, backup/restore health, certificate renewal, ingestion and
+  extraction health, and container updates. Initial hosting deployment and domain
+  ownership must be verified before claiming an externally accessible website.

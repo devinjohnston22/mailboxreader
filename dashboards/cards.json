@@ -1,0 +1,10 @@
+[
+  {"name":"High-value possible overdue — review required","display":"table","sql":"SELECT * FROM mailbox.possible_overdue ORDER BY amount DESC"},
+  {"name":"Invoice candidates by currency (not ledger balances)","display":"table","sql":"SELECT currency, direction, count(*) AS invoices, sum(amount) AS candidate_amount FROM mailbox.transaction_candidates WHERE kind='invoice' GROUP BY currency,direction ORDER BY currency,direction"},
+  {"name":"Vendor payment-method evidence","display":"table","sql":"SELECT * FROM mailbox.vendor_payment_methods ORDER BY last_seen DESC"},
+  {"name":"Finance contacts","display":"table","sql":"SELECT * FROM mailbox.finance_contacts ORDER BY last_seen DESC"},
+  {"name":"Transaction source evidence","display":"table","sql":"SELECT * FROM mailbox.source_evidence ORDER BY received_at DESC LIMIT 1000"},
+  {"name":"Sync progress and errors","display":"table","sql":"SELECT * FROM mailbox.sync_health ORDER BY stream"},
+  {"name":"Extraction queue health","display":"table","sql":"SELECT * FROM mailbox.extraction_health ORDER BY status"},
+  {"name":"All transaction candidates","display":"table","sql":"SELECT * FROM mailbox.transaction_candidates ORDER BY received_at DESC LIMIT 1000"}
+]

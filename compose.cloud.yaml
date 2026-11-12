@@ -1,0 +1,15 @@
+# Managed cloud proxy CA; use alongside compose.yaml. No TLS bypasses.
+services:
+  api:
+    build:
+      secrets: [proxy_ca]
+    environment:
+      SSL_CERT_FILE: /run/trust/ca-certificates.crt
+    volumes: [/etc/ssl/certs/ca-certificates.crt:/run/trust/ca-certificates.crt:ro]
+  n8n:
+    environment:
+      NODE_EXTRA_CA_CERTS: /run/trust/ca-certificates.crt
+    volumes: [/etc/ssl/certs/ca-certificates.crt:/run/trust/ca-certificates.crt:ro]
+secrets:
+  proxy_ca:
+    file: /etc/ssl/certs/ca-certificates.crt

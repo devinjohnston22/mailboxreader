@@ -1,0 +1,141 @@
+services:
+  postgres:
+    image: postgres:16.14-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?Set DB_ADMIN_PASSWORD}
+      MAILBOX_DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init_postgres.sh:/docker-entrypoint-initdb.d/01-mailbox.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d postgres]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  api:
+    image: mailboxreader-api:local
+    build: .
+    environment:
+      DATABASE_URL: postgresql://mailbox:${POSTGRES_PASSWORD}@postgres:5432/mailbox
+      API_TOKEN: ${API_TOKEN:?Set API_TOKEN}
+      MAILBOX_ID: ${MAILBOX_ID:-primary}
+      LIVE_FOLDER: ${LIVE_FOLDER:-inbox}
+      HISTORY_START: ${HISTORY_START:-2020-01-01T00:00:00Z}
+      HISTORY_END: ${HISTORY_END:-}
+      HIGH_VALUE_AMOUNT: ${HIGH_VALUE_AMOUNT:-10000}
+      HIGH_VALUE_CURRENCY: ${HIGH_VALUE_CURRENCY:-USD}
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4.1-mini}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports: [127.0.0.1:8000:8000]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  analytics-setup:
+    image: mailboxreader-api:local
+    profiles: [tools]
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_ADMIN_PASSWORD}@postgres:5432/mailbox
+      ANALYTICS_PASSWORD: ${ANALYTICS_PASSWORD:?Set ANALYTICS_PASSWORD}
+    command: [python, scripts/create_analytics_role.py]
+    depends_on:
+      api:
+        condition: service_healthy
+  dashboard-setup:
+    image: mailboxreader-api:local
+    profiles: [tools]
+    user: '${SETUP_UID:-0}:${SETUP_GID:-0}'
+    environment:
+      MAILBOX_CONFIG_ROOT: /setup
+      METABASE_BOOTSTRAP_URL: http://metabase:3000
+    volumes:
+      - ./.env:/setup/.env:ro
+      - ./.local:/setup/.local
+    command: [python, scripts/bootstrap_metabase.py]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      metabase:
+        condition: service_started
+  website-check:
+    image: mailboxreader-api:local
+    profiles: [tools]
+    user: '${SETUP_UID:-0}:${SETUP_GID:-0}'
+    working_dir: /setup
+    volumes:
+      - ./.env.website:/setup/.env.website:ro
+    command: [python, /app/scripts/verify_website.py]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  n8n:
+    image: n8nio/n8n:2.46.4
+    ports: [127.0.0.1:5678:5678]
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set N8N_ENCRYPTION_KEY}
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: 'true'
+      N8N_DIAGNOSTICS_ENABLED: 'false'
+      N8N_PERSONALIZATION_ENABLED: 'false'
+      N8N_TEMPLATES_ENABLED: 'false'
+      N8N_SECURE_COOKIE: 'false'
+      EXECUTIONS_DATA_SAVE_ON_ERROR: none
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: none
+      EXECUTIONS_DATA_SAVE_ON_PROGRESS: 'false'
+      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: 'false'
+      EXECUTIONS_DATA_PRUNE: 'true'
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: 'true'
+      NO_PROXY: ${NO_PROXY:-},api,postgres,n8n,metabase,metabase-db,localhost,127.0.0.1
+      no_proxy: ${NO_PROXY:-},api,postgres,n8n,metabase,metabase-db,localhost,127.0.0.1
+      GENERIC_TIMEZONE: UTC
+    volumes:
+      - n8ndata:/home/node/.n8n
+      - ./workflows:/workflows:ro
+    restart: unless-stopped
+  metabase-db:
+    image: postgres:16.14-bookworm
+    environment:
+      POSTGRES_USER: metabase
+      POSTGRES_DB: metabase
+      POSTGRES_PASSWORD: ${METABASE_DB_PASSWORD:?Set METABASE_DB_PASSWORD}
+    volumes: [metabasedata:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U metabase -d metabase]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  metabase:
+    image: metabase/metabase@sha256:97584af96567aa005a7d5eb4aa34226e8011a344f51592cd6e84df37feb5e29b
+    ports: [127.0.0.1:3000:3000]
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: metabase-db
+      MB_DB_DBNAME: metabase
+      MB_DB_USER: metabase
+      MB_DB_PASS: ${METABASE_DB_PASSWORD}
+      MB_ANON_TRACKING_ENABLED: 'false'
+      MB_CHECK_FOR_UPDATES: 'false'
+    depends_on:
+      metabase-db:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  pgdata:
+  n8ndata:
+  metabasedata:

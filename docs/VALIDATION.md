@@ -1,0 +1,71 @@
+# Validation record
+
+Validated in the isolated development environment on 2026-11-03 using synthetic
+mail only. No live mailbox OAuth token or real AI provider key was used.
+
+- Python 3.12; pinned runtime dependencies in `requirements.txt`.
+- PostgreSQL migrations apply transactionally and can be rerun without changes.
+  Checksums reject changes to already-applied migrations.
+- 21 unit/API/PostgreSQL regression tests cover source grounding, fabricated fields,
+  privacy/auth responses, live/history overlap, invoice dedup, atomic rollback,
+  lease fencing, throttling, delta reset, date-window completion, source updates,
+  deletions, bounded model retries and restricted analytics permissions.
+- n8n 2.46.4 imported all three shipped workflows. All three also executed with
+  a synthetic Graph HTTP server and dedicated synthetic mailbox alias. The actual
+  HTTP Request/If nodes, expressions, Graph response envelope, API authentication,
+  commit/checkpoint logic and overlapping-message dedup were exercised. Microsoft
+  authentication was deliberately replaced in these test copies only.
+- Metabase's exact image is pinned by digest in Compose. The setup helper created
+  a PostgreSQL analytics connection, collection, dashboard and eight cards; all
+  eight SQL queries completed through the read-only role. Repeat provisioning
+  updates existing objects. All Users collection access and self-service finance
+  database queries are disabled using supported open-source permissions.
+- Compose services start with PostgreSQL 16.14 and Python 3.12.14. The API runs
+  as UID 10001 with a read-only filesystem. Its database login is not a superuser
+  and cannot create roles or databases. The analytics role cannot read raw source
+  tables or write application tables even after changing its read-only default.
+- `bash scripts/bootstrap.sh` completed again with existing state, preserving local
+  settings and avoiding workflow/dashboard duplication.
+- `git diff --check`, Python compilation and shell syntax checks passed. Generated
+  n8n workflow JSON is checked against its generator by the test suite. Local `.env`,
+  generated owner credentials, virtualenv and smoke artifacts are ignored by Git.
+
+## Deliberately not claimed
+
+Actual Microsoft tenant/account authorization, real Graph delta behavior for your
+mailbox, external model accuracy/availability, live historical completeness and
+production ingress/backup operations require deployment-specific validation.
+These are not established by a synthetic test. AI output is always a candidate,
+and no monitoring result establishes a financial obligation or authorizes payment.
+No email, payment, reminder or live-mailbox write was performed.
+
+## Dedicated website deployment checks
+
+The website overlay and Caddy configuration were prepared and validated locally.
+Four additional tests passed for hostname validation and HTTPS readiness checks.
+A private, loopback-only Caddy container successfully proxied the real Metabase
+GUI, returned the intended security headers, denied unauthenticated dashboard API
+access, and allowed the owner to view all eight cards after login. The Compose
+overlay parses correctly. Existing database integration tests were not rerun for
+these deployment-only changes; the 21-test application run above remains the
+prior application validation record.
+
+No public hostname, external TLS certificate, DNS change, hosting deployment or
+externally reachable website has been verified. Hosting provider/domain details
+and authorized hosting access are still required. The temporary local proxy is
+test infrastructure, not a public dashboard link.
+
+## Console-only VPS installer
+
+The new `bootstrap_vps.sh` completed successfully against the local Docker
+stack: it built the image, initialized analytics permissions, and provisioned
+the eight dashboard cards from a restricted setup container. No host Python
+virtualenv was needed for that run. All 25 application/database/website tests
+passed against a disposable PostgreSQL 16.14 instance. Shell syntax checks passed
+for `install_vps.sh` and `bootstrap_vps.sh`.
+
+The Ubuntu package-installation stage has not been executed on the user's VPS.
+The installer performs resource and port checks, preserves existing web services,
+and uses Ubuntu-signed package repositories. Remote success is not claimed until
+the VPS console run and trusted public HTTPS check complete. No DNS or mailbox
+changes were made by these local tests.

@@ -1,0 +1,35 @@
+# Dedicated HTTPS website. Use with compose.yaml after owner setup has completed.
+services:
+  metabase:
+    environment:
+      MB_SITE_NAME: Mailbox Reader
+      MB_SITE_URL: https://${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN in .env.website}
+      MB_ENABLE_PUBLIC_SHARING: 'false'
+      MB_ENABLE_EMBEDDING: 'false'
+  website:
+    image: caddy@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    profiles: [website]
+    environment:
+      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN in .env.website}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env.website}
+      NO_PROXY: ${NO_PROXY:-},metabase,localhost,127.0.0.1
+      no_proxy: ${NO_PROXY:-},metabase,localhost,127.0.0.1
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      metabase:
+        condition: service_started
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1:2019/config/']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+volumes:
+  caddydata:
+  caddyconfig:
