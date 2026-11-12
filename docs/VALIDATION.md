@@ -90,3 +90,13 @@ network-isolated container with simulated Ubuntu OS metadata: an existing port
 443 listener remained running while port 8443 passed; selecting the occupied
 443 or occupying 8443 caused a safe stop. No packages were installed in these
 preflight tests and no existing server process was stopped or reconfigured.
+
+## Correcting pending login details
+
+Three targeted tests passed for `reenter_dashboard_login.py`: updating pending
+credentials while preserving the host/port and protected backups; refusing to
+overwrite saved accounts or accept invalid input; and checking first-run server
+state while refusing initialized, timed-out or unidentified dashboard responses.
+Only connection refusal (no local dashboard listener yet) permits a missing
+server during this pre-installation correction. Passwords are entered through
+`getpass` and never printed. No database, volume, or existing account is reset.

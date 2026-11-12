@@ -106,6 +106,15 @@ Use MFA/SSO where your Metabase edition or hosting identity gateway supports it.
 
 ## Operations
 
+If you mistyped the initial email/password and no dashboard owner has yet been
+created, run `python3 scripts/reenter_dashboard_login.py` in the VPS console. It
+prompts privately, checks the local setup state, backs up pending settings under
+`.local/login-backup-*`, and updates only the pending login/contact email. The
+hostname and HTTPS port are retained. It refuses to overwrite an existing saved
+owner or reset an already initialized dashboard. After success, rerun the
+installer with `DASHBOARD_HTTPS_PORT=8443` for an alternate-port deployment.
+This helper does not delete databases or Docker volumes. Keep backup files private.
+
 - HTTPS verification failures are deployment failures, not success. Inspect DNS,
   port reachability and `docker compose ... logs website`; never disable certificate
   verification to work around them. Caddy requires certificate-authority network
