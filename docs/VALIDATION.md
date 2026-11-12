@@ -100,3 +100,13 @@ state while refusing initialized, timed-out or unidentified dashboard responses.
 Only connection refusal (no local dashboard listener yet) permits a missing
 server during this pre-installation correction. Passwords are entered through
 `getpass` and never printed. No database, volume, or existing account is reset.
+
+## Console disconnection handling
+
+Three background-launcher tests passed: detecting an existing installer, refusing
+an unattended start without saved login details, and running a real synthetic
+installer in a separate process session. The synthetic worker finished after the
+launcher returned, retained its private log and exit status, and rejected a
+concurrent launch. The fixture password did not appear in the log. The launcher
+has not yet been run on the user's VPS; a public website success is still not
+claimed by these local checks.

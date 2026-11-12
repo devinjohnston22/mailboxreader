@@ -106,6 +106,16 @@ Use MFA/SSO where your Metabase edition or hosting identity gateway supports it.
 
 ## Operations
 
+For a browser console that disconnects, finish the initial email/password prompts
+first, then run `python3 scripts/start_setup_background.py` as root. It detects
+existing setup scripts and refuses duplicate launches. A new setup runs in an
+independent process session with no terminal input. It records progress privately
+in `.local/setup.log` and completion in `.local/setup-status.json`. Reconnect the
+console and run `tail -n 25 /opt/mailboxreader/.local/setup.log` to inspect progress.
+It may pause this project's website during private setup; other services are not
+stopped. An existing active installer is left running and may still need input
+in its original console. No credentials are printed by this launcher.
+
 If you mistyped the initial email/password and no dashboard owner has yet been
 created, run `python3 scripts/reenter_dashboard_login.py` in the VPS console. It
 prompts privately, checks the local setup state, backs up pending settings under
